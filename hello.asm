@@ -1,75 +1,67 @@
+; ============================================
+; Main Entry Point....
+; ============================================
+
 global _start
 
-section .data
-    align 2
-    hello: db 'Hello World!', 0xa
-    helloLen: equ $-hello
-
-    pressMsg: db 'Press any key to exit!...', 0xa
-    pressLen: equ $-pressMsg
+; Window
+extern Window_init
+extern Window_close
+extern Window_clear
+extern Window_update
+extern Window_getEvent
+extern Window_shouldClose
 
 section .bss
-    buffer: resb 1
-    termios: resb 36
-    old_termios: resb 36
+    running: resb 1
 
 section .text
-    _start:
-        ; Hello World
-        mov eax, 0x4
-        mov ebx, 0x1
-        mov ecx, hello
-        mov edx, helloLen
-        int 0x80
 
-        ; Press Message
-        mov eax, 0x4
-        mov ebx, 0x1
-        mov ecx, pressMsg
-        mov edx, pressLen
-        int 0x80
+; ------------------------
+; Start
+; ------------------------
+_start:
+    ; Init Window
+    call Window_init
+    cmp eax, 0
+    je .error_exit
 
-        ; Current Terminal
-        mov eax, 0x36
-        mov ebx, 0x0
-        mov ecx, 0x5401
-        mov edx, termios
-        int 0x80
+    ; Running
+    mov byte [running], 1
 
-        ; Save
-        mov esi, termios
-        mov edi, old_termios
-        mov ecx, 36
-        rep movsb
+    ; Clear Window
+    call Window_clear
+    call Window_update
 
-        ; Clear Flags
-        mov eax, [termios + 12]
-        and eax, ~(1 << 1)
-        and eax, ~(1 << 3)
-        mov [termios + 12], eax
+; ------------------------
+; Run
+; ------------------------
+.run:
+    ; Check
+    call Window_shouldClose
+    cmp eax, 1
+    je .cleanup
 
-        ; Apply
-        mov eax, 0x36
-        mov ebx, 0x0
-        mov ecx, 0x5402
-        mov edx, termios
-        int 0x80
+    ; Process Events
+    call Window_getEvent
 
-        ; Read char
-        mov eax, 0x3
-        mov ebx, 0x0
-        mov ecx, buffer
-        mov edx, 0x1
-        int 0x80
+    jmp .run
 
-        ; Restore
-        mov eax, 0x36
-        mov ebx, 0x0
-        mov ecx, 0x5402
-        mov edx, old_termios
-        int 0x80
+; ------------------------
+; Cleanup
+; ------------------------
+.cleanup:
+    call Window_close
+    mov eax, 0x1
+    xor ebx, ebx
+    int 0x80
 
-        ; Exit
-        mov eax, 0x1
-        xor ebx, ebx
-        int 0x80
+;
+; Error
+;
+.error_exit:
+    mov eax, 0x1
+    mov ebx, 0x1
+    int 0x80
+
+

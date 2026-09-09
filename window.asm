@@ -42,6 +42,8 @@ section .bss
     
     shouldClose: resb 1
 
+section .text
+
 ; ------------------------
 ; Init
 ; ------------------------
